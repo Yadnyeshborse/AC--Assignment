@@ -64,7 +64,9 @@ public class BuildingController {
 
 	@DeleteMapping("/rooms/{id}")
 	public ResponseEntity<Void> deleteRoom(@PathVariable String id) {
+		System.out.println("DELETE request for room ID: " + id);
 		boolean removed = buildingService.deleteRoom(id);
+		System.out.println("Room removed: " + removed);
 		return removed ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
 	}
 

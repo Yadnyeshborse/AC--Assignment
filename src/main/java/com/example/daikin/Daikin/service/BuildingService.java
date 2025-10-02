@@ -128,10 +128,15 @@ public class BuildingService {
 	}
 
 	public boolean deleteRoom(String id) {
+		System.out.println("Attempting to delete room with ID: " + id);
+		System.out.println("Available apartments: " + building.getApartments().stream().map(Room::getId).toList());
+		System.out.println("Available common rooms: " + building.getCommonRooms().stream().map(Room::getId).toList());
+		
 		Iterator<Apartment> aIt = building.getApartments().iterator();
 		while (aIt.hasNext()) {
 			if (aIt.next().getId().equals(id)) {
 				aIt.remove();
+				System.out.println("Removed apartment with ID: " + id);
 				return true;
 			}
 		}
@@ -139,9 +144,11 @@ public class BuildingService {
 		while (cIt.hasNext()) {
 			if (cIt.next().getId().equals(id)) {
 				cIt.remove();
+				System.out.println("Removed common room with ID: " + id);
 				return true;
 			}
 		}
+		System.out.println("Room with ID " + id + " not found");
 		return false;
 	}
 }
