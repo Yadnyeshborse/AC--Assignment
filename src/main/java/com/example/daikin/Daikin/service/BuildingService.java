@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.example.daikin.Daikin.model.Apartment;
@@ -15,10 +17,13 @@ import com.example.daikin.Daikin.model.Room;
 
 @Service
 public class BuildingService {
+	private static final Logger logger = LoggerFactory.getLogger(BuildingService.class);
+	
 	private final Building building;
 	private final Random random = new Random();
 
 	public BuildingService() {
+		logger.info("Initializing BuildingService with default building data");
 		this.building = new Building();
 		this.building.setRequestedTemperature(25.0);
 
@@ -48,6 +53,8 @@ public class BuildingService {
 		this.building.getCommonRooms().add(library);
 
 		recalculateStatuses();
+		logger.info("Building initialized with {} apartments and {} common rooms", 
+			building.getApartments().size(), building.getCommonRooms().size());
 	}
 
 	private double randomTemperature() {
@@ -59,6 +66,8 @@ public class BuildingService {
 	}
 
 	public void setRequestedTemperature(double requestedTemperature) {
+		logger.info("Setting building requested temperature from {} to {}", 
+			building.getRequestedTemperature(), requestedTemperature);
 		building.setRequestedTemperature(requestedTemperature);
 		recalculateStatuses();
 	}
@@ -66,12 +75,21 @@ public class BuildingService {
 	public void recalculateStatuses() {
 		double target = building.getRequestedTemperature();
 		List<Room> rooms = getAllRooms();
+		logger.debug("Recalculating heating/cooling status for {} rooms with target temperature {}", 
+			rooms.size(), target);
+		
+		int heatingCount = 0, coolingCount = 0;
 		for (Room room : rooms) {
 			boolean heat = room.getCurrentTemperature() < target;
 			boolean cool = room.getCurrentTemperature() > target;
 			room.setHeatingEnabled(heat);
 			room.setCoolingEnabled(cool);
+			
+			if (heat) heatingCount++;
+			if (cool) coolingCount++;
 		}
+		
+		logger.info("Status recalculated: {} rooms heating, {} rooms cooling", heatingCount, coolingCount);
 	}
 
 	public List<Room> getAllRooms() {
@@ -94,6 +112,7 @@ public class BuildingService {
 	public void upsertApartment(Apartment apartment) {
 		Optional<Apartment> existing = building.getApartments().stream().filter(a -> a.getId().equals(apartment.getId())).findFirst();
 		if (existing.isPresent()) {
+			logger.info("Updating existing apartment with ID: {}", apartment.getId());
 			Apartment e = existing.get();
 			e.setOwnerName(apartment.getOwnerName());
 			e.setCurrentTemperature(apartment.getCurrentTemperature());
@@ -104,6 +123,7 @@ public class BuildingService {
 			if (apartment.getCurrentTemperature() == 0) {
 				apartment.setCurrentTemperature(randomTemperature());
 			}
+			logger.info("Adding new apartment with ID: {} and owner: {}", apartment.getId(), apartment.getOwnerName());
 			building.getApartments().add(apartment);
 		}
 		recalculateStatuses();
@@ -112,6 +132,7 @@ public class BuildingService {
 	public void upsertCommonRoom(CommonRoom commonRoom) {
 		Optional<CommonRoom> existing = building.getCommonRooms().stream().filter(c -> c.getId().equals(commonRoom.getId())).findFirst();
 		if (existing.isPresent()) {
+			logger.info("Updating existing common room with ID: {}", commonRoom.getId());
 			CommonRoom e = existing.get();
 			e.setType(commonRoom.getType());
 			e.setCurrentTemperature(commonRoom.getCurrentTemperature());
@@ -122,21 +143,22 @@ public class BuildingService {
 			if (commonRoom.getCurrentTemperature() == 0) {
 				commonRoom.setCurrentTemperature(randomTemperature());
 			}
+			logger.info("Adding new common room with ID: {} and type: {}", commonRoom.getId(), commonRoom.getType());
 			building.getCommonRooms().add(commonRoom);
 		}
 		recalculateStatuses();
 	}
 
 	public boolean deleteRoom(String id) {
-		System.out.println("Attempting to delete room with ID: " + id);
-		System.out.println("Available apartments: " + building.getApartments().stream().map(Room::getId).toList());
-		System.out.println("Available common rooms: " + building.getCommonRooms().stream().map(Room::getId).toList());
+		logger.info("Attempting to delete room with ID: {}", id);
+		logger.debug("Available apartments: {}", building.getApartments().stream().map(Room::getId).toList());
+		logger.debug("Available common rooms: {}", building.getCommonRooms().stream().map(Room::getId).toList());
 		
 		Iterator<Apartment> aIt = building.getApartments().iterator();
 		while (aIt.hasNext()) {
 			if (aIt.next().getId().equals(id)) {
 				aIt.remove();
-				System.out.println("Removed apartment with ID: " + id);
+				logger.info("Successfully removed apartment with ID: {}", id);
 				return true;
 			}
 		}
@@ -144,11 +166,11 @@ public class BuildingService {
 		while (cIt.hasNext()) {
 			if (cIt.next().getId().equals(id)) {
 				cIt.remove();
-				System.out.println("Removed common room with ID: " + id);
+				logger.info("Successfully removed common room with ID: {}", id);
 				return true;
 			}
 		}
-		System.out.println("Room with ID " + id + " not found");
+		logger.warn("Room with ID {} not found for deletion", id);
 		return false;
 	}
 }
